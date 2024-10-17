@@ -1,0 +1,173 @@
+#!/usr/bin/env python
+
+import mysql.connector
+import cgi
+import cgitb
+
+# Enable error display for debugging
+cgitb.enable()
+
+# Connect to the MySQL database
+def connect_db():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",  # Default MySQL username
+        password="",  # Default MySQL password for XAMPP
+        database="testdb"
+    )
+
+# HTML template for the web page
+def html_template(body):
+    return f"""
+    <html>
+        <head>
+            <title>CRUD Application</title>
+        </head>
+        <body>
+            <h1>Employee Management</h1>
+            {body}
+            <br><br>
+            <a href='/cgi-bin/crud.py'>Home</a>
+        </body>
+    </html>
+    """
+
+# Function to display the home page with employee list
+def display_employees():
+    db = connect_db()
+    cursor = db.cursor()
+
+    # Query to fetch all employees
+    cursor.execute("SELECT * FROM employees")
+    rows = cursor.fetchall()
+
+    # Create an HTML table to display the employees
+    table = "<table border='1'><tr><th>ID</th><th>Name</th><th>Age</th><th>Salary</th><th>Actions</th></tr>"
+    for row in rows:
+        table += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td>"
+        table += f"<td><a href='/cgi-bin/crud.py?action=edit&id={row[0]}'>Edit</a> | <a href='/cgi-bin/crud.py?action=delete&id={row[0]}'>Delete</a></td></tr>"
+    table += "</table>"
+
+    cursor.close()
+    db.close()
+
+    # Add form for new employee
+    form = """
+    <h2>Add New Employee</h2>
+    <form method='POST' action='/cgi-bin/crud.py'>
+        <input type='hidden' name='action' value='create'>
+        Name: <input type='text' name='name'><br>
+        Age: <input type='text' name='age'><br>
+        Salary: <input type='text' name='salary'><br>
+        <input type='submit' value='Add Employee'>
+    </form>
+    """
+
+    return html_template(table + form)
+
+# Function to insert a new employee
+def create_employee(form):
+    name = form.getvalue('name')
+    age = form.getvalue('age')
+    salary = form.getvalue('salary')
+
+    db = connect_db()
+    cursor = db.cursor()
+
+    # Insert new employee into database
+    cursor.execute("INSERT INTO employees (name, age, salary) VALUES (%s, %s, %s)", (name, age, salary))
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+    # Redirect back to the home page
+    print("Content-Type: text/html\n")
+    print("<meta http-equiv='refresh' content='0; url=/cgi-bin/crud.py'>")
+
+# Function to delete an employee
+def delete_employee(emp_id):
+    db = connect_db()
+    cursor = db.cursor()
+
+    # Delete employee from the database
+    cursor.execute("DELETE FROM employees WHERE id = %s", (emp_id,))
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+    # Redirect back to the home page
+    print("Content-Type: text/html\n")
+    print("<meta http-equiv='refresh' content='0; url=/cgi-bin/crud.py'>")
+
+# Function to handle editing of an employee
+def edit_employee_form(emp_id):
+    db = connect_db()
+    cursor = db.cursor()
+
+    # Fetch employee data to populate the form
+    cursor.execute("SELECT * FROM employees WHERE id = %s", (emp_id,))
+    employee = cursor.fetchone()
+
+    form = f"""
+    <h2>Edit Employee</h2>
+    <form method='POST' action='/cgi-bin/crud.py'>
+        <input type='hidden' name='action' value='update'>
+        <input type='hidden' name='id' value='{employee[0]}'>
+        Name: <input type='text' name='name' value='{employee[1]}'><br>
+        Age: <input type='text' name='age' value='{employee[2]}'><br>
+        Salary: <input type='text' name='salary' value='{employee[3]}'><br>
+        <input type='submit' value='Update Employee'>
+    </form>
+    """
+
+    cursor.close()
+    db.close()
+
+    return html_template(form)
+
+# Function to update an employee
+def update_employee(form):
+    emp_id = form.getvalue('id')
+    name = form.getvalue('name')
+    age = form.getvalue('age')
+    salary = form.getvalue('salary')
+
+    db = connect_db()
+    cursor = db.cursor()
+
+    # Update employee in the database
+    cursor.execute("UPDATE employees SET name = %s, age = %s, salary = %s WHERE id = %s", (name, age, salary, emp_id))
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+    # Redirect back to the home page
+    print("Content-Type: text/html\n")
+    print("<meta http-equiv='refresh' content='0; url=/cgi-bin/crud.py'>")
+
+# Main entry point for the CGI script
+def main():
+    print("Content-Type: text/html\n")
+
+    form = cgi.FieldStorage()
+    action = form.getvalue('action')
+
+    # Route to the correct CRUD operation
+    if action == 'create':
+        create_employee(form)
+    elif action == 'delete':
+        emp_id = form.getvalue('id')
+        delete_employee(emp_id)
+    elif action == 'edit':
+        emp_id = form.getvalue('id')
+        print(edit_employee_form(emp_id))
+    elif action == 'update':
+        update_employee(form)
+    else:
+        print(display_employees())
+
+if __name__ == "__main__":
+    main()
