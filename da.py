@@ -1,3 +1,6 @@
+
+
+
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -157,3 +160,13 @@ ax = fig.add_subplot(111, projection='3d')
 ax.scatter(X_pca[:, 0], X_pca[:, 1], X_pca[:, 2], c=clusters, cmap='viridis')
 plt.title("3D Cluster Visualization")
 plt.show()
+
+
+import pandas as pd
+from mlxtend.frequent_patterns import apriori, association_rules
+
+# Load the insurance dataset
+insurance_df = pd.read_csv('insurance.csv')
+
+# Display the first few rows of the dataset
+print(insurance_df.head())
